@@ -1,0 +1,90 @@
+diff -ur coreutils-8.9.orig/src/ls.c coreutils-8.9/src/ls.c
+--- coreutils-8.9.orig/src/ls.c	2011-01-01 22:19:23.000000000 +0100
++++ coreutils-8.9/src/ls.c	2011-04-04 13:53:35.301391379 +0200
+@@ -59,6 +59,7 @@
+ #include <signal.h>
+ #include <selinux/selinux.h>
+ #include <wchar.h>
++#include <sys/vfs.h>
+ 
+ #if HAVE_LANGINFO_CODESET
+ # include <langinfo.h>
+@@ -2719,7 +2720,10 @@
+ {
+   uintmax_t blocks = 0;
+   struct fileinfo *f;
+-
++  struct statfs sfs;
++  
++  bool format_needs_color = 0;
++  bool view_needs_color   = 0;
+   /* An inode value prior to gobble_file necessarily came from readdir,
+      which is not used for command line arguments.  */
+   assert (! command_line_arg || inode == NOT_AN_INODE_NUMBER);
+@@ -2734,13 +2738,10 @@
+   memset (f, '\0', sizeof *f);
+   f->stat.st_ino = inode;
+   f->filetype = type;
+-
+-  if (command_line_arg
++  
++  format_needs_color = (
++   (command_line_arg
+       || format_needs_stat
+-      /* When coloring a directory (we may know the type from
+-         direct.d_type), we have to stat it in order to indicate
+-         sticky and/or other-writable attributes.  */
+-      || (type == directory && print_with_color)
+       /* When dereferencing symlinks, the inode and type must come from
+          stat, but readdir provides the inode and type of lstat.  */
+       || ((print_inode || format_needs_type)
+@@ -2756,19 +2757,13 @@
+               /* --indicator-style=classify (aka -F)
+                  requires that we stat each regular file
+                  to see if it's executable.  */
+-              || (type == normal && (indicator_style == classify
+-                                     /* This is so that --color ends up
+-                                        highlighting files with these mode
+-                                        bits set even when options like -F are
+-                                        not specified.  Note we do a redundant
+-                                        stat in the very unlikely case where
+-                                        C_CAP is set but not the others. */
+-                                     || (print_with_color
+-                                         && (is_colored (C_EXEC)
+-                                             || is_colored (C_SETUID)
+-                                             || is_colored (C_SETGID)
+-                                             || is_colored (C_CAP)))
+-                                     )))))
++              || (type == normal && (indicator_style == classify))))) ? 1 : 0);
++  
++  view_needs_color = ( ( (type == directory && print_with_color) || (print_with_color && (is_colored (C_EXEC)||is_colored (C_SETUID)
++                                                                     ||is_colored (C_SETGID)||is_colored (C_CAP))) ) ? 1 : 0 );
++  
++  
++  if (format_needs_color || view_needs_color)
+ 
+     {
+       /* Absolute name of this file.  */
+@@ -2783,7 +2778,12 @@
+           absolute_name = alloca (strlen (name) + strlen (dirname) + 2);
+           attach (absolute_name, dirname, name);
+         }
+-
++      if( !format_needs_color ) {
++          if( statfs(absolute_name, &sfs) == 0 && sfs.f_type == 0xbd00bd0 ) {
++              goto LUSTRE_NCOLOR;
++          }
++      }
++      
+       switch (dereference)
+         {
+         case DEREF_ALWAYS:
+@@ -3008,6 +3008,8 @@
+         }
+     }
+ 
++LUSTRE_NCOLOR:
++
+   if (print_inode)
+     {
+       char buf[INT_BUFSIZE_BOUND (uintmax_t)];
