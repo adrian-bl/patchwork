@@ -1,6 +1,6 @@
 diff -ur coreutils-8.9.orig/src/ls.c coreutils-8.9/src/ls.c
 --- coreutils-8.9.orig/src/ls.c	2011-01-01 22:19:23.000000000 +0100
-+++ coreutils-8.9/src/ls.c	2011-04-04 13:53:35.301391379 +0200
++++ coreutils-8.9/src/ls.c	2011-04-04 17:14:37.962558855 +0200
 @@ -59,6 +59,7 @@
  #include <signal.h>
  #include <selinux/selinux.h>
@@ -9,7 +9,20 @@ diff -ur coreutils-8.9.orig/src/ls.c coreutils-8.9/src/ls.c
  
  #if HAVE_LANGINFO_CODESET
  # include <langinfo.h>
-@@ -2719,7 +2720,10 @@
+@@ -102,6 +103,12 @@
+ #include "areadlink.h"
+ #include "mbsalign.h"
+ 
++/* no need to install lustre headers just for this */
++#define X_LUSTRE_SUPER_MAGIC 0xbd00bd0
++#define X_NFS_SUPER_MAGIC    0x6969
++#define X_PANFS_SUPER_MAGIC  0xAAD7AAEA
++#define COLORS_STAT_NEVER 0
++
+ /* Include <sys/capability.h> last to avoid a clash of <sys/types.h>
+    include guards with some premature versions of libcap.
+    For more details, see <http://bugzilla.redhat.com/483548>.  */
+@@ -2719,7 +2726,10 @@
  {
    uintmax_t blocks = 0;
    struct fileinfo *f;
@@ -21,7 +34,7 @@ diff -ur coreutils-8.9.orig/src/ls.c coreutils-8.9/src/ls.c
    /* An inode value prior to gobble_file necessarily came from readdir,
       which is not used for command line arguments.  */
    assert (! command_line_arg || inode == NOT_AN_INODE_NUMBER);
-@@ -2734,13 +2738,10 @@
+@@ -2734,13 +2744,10 @@
    memset (f, '\0', sizeof *f);
    f->stat.st_ino = inode;
    f->filetype = type;
@@ -38,7 +51,7 @@ diff -ur coreutils-8.9.orig/src/ls.c coreutils-8.9/src/ls.c
        /* When dereferencing symlinks, the inode and type must come from
           stat, but readdir provides the inode and type of lstat.  */
        || ((print_inode || format_needs_type)
-@@ -2756,19 +2757,13 @@
+@@ -2756,19 +2763,13 @@
                /* --indicator-style=classify (aka -F)
                   requires that we stat each regular file
                   to see if it's executable.  */
@@ -65,13 +78,13 @@ diff -ur coreutils-8.9.orig/src/ls.c coreutils-8.9/src/ls.c
  
      {
        /* Absolute name of this file.  */
-@@ -2783,7 +2778,12 @@
+@@ -2783,7 +2784,12 @@
            absolute_name = alloca (strlen (name) + strlen (dirname) + 2);
            attach (absolute_name, dirname, name);
          }
 -
 +      if( !format_needs_color ) {
-+          if( statfs(absolute_name, &sfs) == 0 && sfs.f_type == 0xbd00bd0 ) {
++          if( COLORS_STAT_NEVER || ( statfs(absolute_name, &sfs) == 0 && ( sfs.f_type == X_LUSTRE_SUPER_MAGIC ) ) ) { /* || sfs.f_type == X_NFS_SUPER_MAGIC || sfs.f_type == X_PANFS_SUPER_MAGIC ) ) ) { */
 +              goto LUSTRE_NCOLOR;
 +          }
 +      }
@@ -79,7 +92,7 @@ diff -ur coreutils-8.9.orig/src/ls.c coreutils-8.9/src/ls.c
        switch (dereference)
          {
          case DEREF_ALWAYS:
-@@ -3008,6 +3008,8 @@
+@@ -3008,6 +3014,8 @@
          }
      }
  
