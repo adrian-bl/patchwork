@@ -84,7 +84,7 @@ diff -ur coreutils-8.9.orig/src/ls.c coreutils-8.9/src/ls.c
          }
 -
 +      if( !format_needs_color ) {
-+          if( COLORS_STAT_NEVER || ( statfs(absolute_name, &sfs) == 0 && ( sfs.f_type == X_LUSTRE_SUPER_MAGIC || sfs.f_type == X_PANFS_SUPER_MAGIC ) ) ) {
++          if( COLORS_STAT_NEVER || ( statfs(absolute_name, &sfs) == 0 && ( sfs.f_type == X_LUSTRE_SUPER_MAGIC ) ) ) { /* || sfs.f_type == X_NFS_SUPER_MAGIC || sfs.f_type == X_PANFS_SUPER_MAGIC ) ) ) { */
 +              goto LUSTRE_NCOLOR;
 +          }
 +      }
